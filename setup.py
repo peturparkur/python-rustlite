@@ -4,7 +4,7 @@ setup(
     name='rustlite',
     version='0.1.0',    
     description='rust like iterators for python',
-    url='https://github.com',
+    url='https://github.com/peturparkur/python-rustlite',
     author='Peter Nagymathe',
     author_email='peter@nagymathe.xyz',
     license='BSD 2-clause',
