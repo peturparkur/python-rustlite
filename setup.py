@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='rustlite',
-    version='0.1.0',    
+    version='0.1.1',    
     description='rust like iterators for python',
     url='https://github.com/peturparkur/python-rustlite',
     author='Peter Nagymathe',
