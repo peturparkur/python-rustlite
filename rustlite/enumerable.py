@@ -62,10 +62,16 @@ class Iter(Iterable[T]):
     def count(self) -> int:
         return sum(1 for _ in self)
     
+    def group_by(self, key: Callable[[T], R]) -> tuple[R, Iter[T]]:
+        return itertools.groupby(self, key)
+    
+    def pairwise(self) -> Iter[tuple[T, T]]:
+        return itertools.pairwise(self)
+
     def to_list(self) -> SList[T]:
-        return SList(self._iter)
+        return SList(self)
     def to_dict(self) -> SDict[T]:
-        return dict(self._iter)
+        return dict(self)
     def to_collection(self) -> IterCollection:
         return IterCollection(self.to_list())
     def collect(self, call: Callable[[Iterable], R]) -> R:
