@@ -64,7 +64,7 @@ class Iter(Iterable[T]):
     
     def to_list(self) -> SList[T]:
         return SList(self._iter)
-    def to_dict(self) -> Dict[T]:
+    def to_dict(self) -> SDict[T]:
         return dict(self._iter)
     def to_collection(self) -> IterCollection:
         return IterCollection(self.to_list())
@@ -80,12 +80,14 @@ class SList(list[T], Iter[T]):
     def append(self, item: T) -> SList[T]:
         super().append(item)
         return self
+    
 class SDict(dict[T], Iter[T]):
     """
     Smart dict, which can be used as an iterator.
     """
     def iter(self) -> Iter[T]:
         return Iter(self)
+    
 
 class IterCollection(Iter[T]):
     _collection = None
