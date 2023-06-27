@@ -14,15 +14,13 @@ class Iter(Iterable[T], Generic[T]):
     """
     Iterable class, which can be used as an iterator.
     """
-    _data: Iterable[T] = []
-    _iter: Iterator[T] = None
+    _iter: Iterable[T] = None
 
     def __init__(self, iterator: Iterable[T]) -> None:
-        self._data = iterator
-        self._iter = iter(self._data)
+        self._iter = iterator
     
     def __iter__(self) -> Iter[T]:
-        return Iter(self._data)
+        return self._iter.__iter__()
     
     def __next__(self) -> T:
         return self._iter.__next__()
