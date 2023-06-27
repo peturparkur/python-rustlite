@@ -61,6 +61,12 @@ class Iter(Iterable[T], Generic[T]):
     def slice(self, start: int, end: int) -> Iter[T]:
         return self.skip(start).take(end - start)
     
+    def enumerate(self, start: int = 0) -> Iter[tuple[int, T]]:
+        return Iter(enumerate(self, start))
+
+    def batch(self, n: int) -> Iter[Iter[T]]:
+        return self.enumerate().group_by(lambda x: x[0] // n).map(lambda x: x[1])
+    
     def concat(self, other: Iterable[T]) -> Iter[T]:
         return Iter(itertools.chain(self, other))
     
