@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='iterlite',
-    version='0.1.7',    
+    version='0.1.8',    
     description='rust like iterators for python',
     long_description=long_description,
     long_description_content_type='text/markdown',

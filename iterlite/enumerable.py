@@ -73,7 +73,7 @@ class Iter(Iterable[T], Generic[T]):
     def count(self) -> int:
         return sum(1 for _ in self)
     
-    def group_by(self, key: Callable[[T], R]) ->Iter[tuple[R, Iter[T]]]:
+    def group_by(self, key: Callable[[T], R]) -> Iter[tuple[R, Iter[T]]]:
         return Iter(itertools.groupby(self, key))
     
     def pairwise(self) -> Iter[tuple[T, T]]:
