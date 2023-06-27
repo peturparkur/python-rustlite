@@ -64,17 +64,19 @@ class Iter(Iterable[T], Generic[T]):
     def enumerate(self, start: int = 0) -> Iter[tuple[int, T]]:
         return Iter(enumerate(self, start))
 
-    def batch(self, n: int) -> Iter[Iter[T]]:
-        return self.enumerate().group_by(lambda x: x[0] // n).map(lambda x: x[1])
+    def group_by(self, key: Callable[[T], R]) -> Iter[tuple[R, Iter[T]]]:
+        return Iter(itertools.groupby(self, key)).map(lambda x: (x[0], Iter(x[1])))
+
+    def batch(self, n: int):
+        return self.enumerate() \
+            .group_by(lambda x: x[0] // n) \
+            .map(lambda x: x[1].map(lambda y: y[1]))
     
     def concat(self, other: Iterable[T]) -> Iter[T]:
         return Iter(itertools.chain(self, other))
     
     def count(self) -> int:
         return sum(1 for _ in self)
-    
-    def group_by(self, key: Callable[[T], R]) -> Iter[tuple[R, Iter[T]]]:
-        return Iter(itertools.groupby(self, key))
     
     def pairwise(self) -> Iter[tuple[T, T]]:
         return Iter(itertools.pairwise(self))
