@@ -5,8 +5,8 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(
-    name='rustlite',
-    version='0.1.5',    
+    name='iterlite',
+    version='0.1.6',    
     description='rust like iterators for python',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -14,7 +14,7 @@ setup(
     author='Peter Nagymathe',
     author_email='peter@nagymathe.xyz',
     license='AGPLv3+',
-    packages=['rustlite'],
+    packages=['iterlite'],
     install_requires=[],
     classifiers=[
         "Programming Language :: Python :: 3.10",

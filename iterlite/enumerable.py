@@ -6,9 +6,11 @@ import functools
 
 T = TypeVar('T')
 R = TypeVar('R')
+K = TypeVar('K')
+V = TypeVar('V')
 IterT = TypeVar('IterT', bound=Iterator)
 
-class Iter(Iterable[T]):
+class Iter(Iterable[T], Generic[T]):
     """
     Iterable class, which can be used as an iterator.
     """
@@ -56,28 +58,31 @@ class Iter(Iterable[T]):
     def nth(self, n: int) -> Optional[T]:
         return self.skip(n).first()
     
+    def slice(self, start: int, end: int) -> Iter[T]:
+        return self.skip(start).take(end - start)
+    
     def concat(self, other: Iterable[T]) -> Iter[T]:
         return Iter(itertools.chain(self, other))
     
     def count(self) -> int:
         return sum(1 for _ in self)
     
-    def group_by(self, key: Callable[[T], R]) -> tuple[R, Iter[T]]:
-        return itertools.groupby(self, key)
+    def group_by(self, key: Callable[[T], R]) ->Iter[tuple[R, Iter[T]]]:
+        return Iter(itertools.groupby(self, key))
     
     def pairwise(self) -> Iter[tuple[T, T]]:
-        return itertools.pairwise(self)
+        return Iter(itertools.pairwise(self))
 
     def to_list(self) -> SList[T]:
         return SList(self)
-    def to_dict(self) -> SDict[T]:
-        return dict(self)
-    def to_collection(self) -> IterCollection:
+    def to_dict(self, f: Callable[[T], tuple[K, V]]) -> SDict[K, V]:
+        return SDict[K, V](self.map(f))
+    def to_collection(self):
         return IterCollection(self.to_list())
     def collect(self, call: Callable[[Iterable], R]) -> R:
         return call(self)
 
-class SList(list[T], Iter[T]):
+class SList(list[T], Iter[T], Generic[T]):
     """
     Smart list, which can be used as an iterator.
     """
@@ -87,15 +92,21 @@ class SList(list[T], Iter[T]):
         super().append(item)
         return self
     
-class SDict(dict[T], Iter[T]):
+class SDict(dict[K, V], Iter[K], Generic[K, V]):
     """
     Smart dict, which can be used as an iterator.
     """
     def iter(self) -> Iter[T]:
-        return Iter(self)
+        return Iter(super().keys())
+    def keys(self) -> Iter[K]:
+        return Iter(super().keys())
+    def values(self) -> Iter[V]:
+        return Iter(super().values())
+    def items(self) -> Iter[tuple[K, V]]:
+        return Iter(super().items())
     
 
-class IterCollection(Iter[T]):
+class IterCollection(Iter[T], Generic[T]):
     _collection = None
 
     def __init__(self, data: Collection[T]) -> None:
@@ -107,6 +118,9 @@ class IterCollection(Iter[T]):
     def __len__(self) -> int:
         return self._collection.__len__()
     
+    def len(self) -> int:
+        return self.__len__()
+    
     def __getitem__(self, index: int) -> T:
         return self._collection.__getitem__(index)
     
@@ -115,3 +129,6 @@ class IterCollection(Iter[T]):
     
     def __reversed__(self) -> Iter[T]:
         return Iter(reversed(self._collection))
+    
+    def reversed(self) -> Iter[T]:
+        return self.__reversed__()
