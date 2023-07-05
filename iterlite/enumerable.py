@@ -23,7 +23,7 @@ class Iter(Iterable[T], Generic[T]):
         return self._iter.__iter__()
     
     def __next__(self) -> T:
-        return self._iter.__next__()
+        return self.__iter__().__next__()
 
     def filter(self, predicate: Callable[[T], bool]) -> Iter[T]:
         return IterFilter(self, predicate)
@@ -97,9 +97,6 @@ class IterMap(Iter[T], Generic[T, R]):
     def __iter__(self):
         return map(self.func, self._iter)
     
-    def __next__(self) -> T:
-        return self.__next__()
-    
 class IterFilter(Iter[T], Generic[T]):
     def __init__(self, iterator: Iterable[T], predicate: Callable[[T], bool]) -> None:
         super().__init__(iterator)
@@ -107,9 +104,6 @@ class IterFilter(Iter[T], Generic[T]):
     
     def __iter__(self):
         return filter(self.func, self._iter)
-    
-    def __next__(self) -> T:
-        return self.__next__()
 
 class IterSlice(Iter[T], Generic[T]):
     def __init__(self, iterator: Iterable[T], start: int, end: int) -> None:
@@ -118,14 +112,7 @@ class IterSlice(Iter[T], Generic[T]):
         self.end = end
     
     def __iter__(self):
-        if(self.end is None):
-            return itertools.islice(self, self.start)
-        if(self.start is None):
-            return itertools.islice(self, self.end, None)
         return itertools.islice(self._iter, self.start, self.end)
-    
-    def __next__(self) -> T:
-        return self.__next__()
     
 class IterGroupby(Iter[T], Generic[T, R]):
     def __init__(self, iterator: Iterable[T], key: Callable[[T], R]) -> None:
@@ -134,9 +121,6 @@ class IterGroupby(Iter[T], Generic[T, R]):
     
     def __iter__(self):
         return map(lambda pair: (pair[0], Iter[T](pair[1])), itertools.groupby(self._iter, self.key))
-    
-    def __next__(self) -> T:
-        return self.__next__()
 
 class SList(list[T], Iter[T], Generic[T]):
     """
