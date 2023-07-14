@@ -1,2 +1,2 @@
 from .enumerable import Iter, IterCollection, SList, SDict
-__version__ = "0.1.14"
+__version__ = "0.1.15"

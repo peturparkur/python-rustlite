@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import *
-from typing import Iterator
 from collections import deque
 import itertools
 import functools
@@ -63,7 +62,16 @@ class Iter(Iterable[T], Generic[T]):
         return Iter(enumerate(self, start))
 
     def group_by(self, key: Callable[[T], R]) -> Iter[tuple[R, Iter[T]]]:
+        """
+        Groupby on keys
+        """
         return IterGroupby(self, key)
+    
+    def agg_groupby(self, key: Callable[[T], R]):
+        """
+        Groupby on consecutive keys
+        """
+        return Iter(itertools.groupby(self, key))
 
     def batch(self, n: int):
         return self.enumerate() \
