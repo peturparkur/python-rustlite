@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import *
 from typing import Iterator
+from collections import deque
 import itertools
 import functools
 
@@ -8,7 +9,6 @@ T = TypeVar('T')
 R = TypeVar('R')
 K = TypeVar('K')
 V = TypeVar('V')
-IterT = TypeVar('IterT', bound=Iterator)
 
 class Iter(Iterable[T], Generic[T]):
     """
@@ -37,8 +37,8 @@ class Iter(Iterable[T], Generic[T]):
         except StopIteration:
             return None
 
-    def flatten(self) -> Iter[T]:
-        return Iter(itertools.chain.from_iterable(self))
+    def flatten(self: Iter[Iter[R]]) -> Iter[R]:
+        return Iter[R](itertools.chain.from_iterable(self))
     
     def reduce(self, f: Callable[[R, T], R], initial: Optional[R] = None) -> R:
         return functools.reduce(f, self, self.first() if initial is None else initial)
@@ -88,64 +88,6 @@ class Iter(Iterable[T], Generic[T]):
     def collect(self, call: Callable[[Iterable], R]) -> R:
         return call(self)
 
-class IterMap(Iter[T], Generic[T, R]):
-
-    def __init__(self, iterator: Iterable[T], f: Callable[[T], R]) -> None:
-        super().__init__(iterator)
-        self.func = f
-    
-    def __iter__(self):
-        return map(self.func, self._iter)
-    
-class IterFilter(Iter[T], Generic[T]):
-    def __init__(self, iterator: Iterable[T], predicate: Callable[[T], bool]) -> None:
-        super().__init__(iterator)
-        self.func = predicate
-    
-    def __iter__(self):
-        return filter(self.func, self._iter)
-
-class IterSlice(Iter[T], Generic[T]):
-    def __init__(self, iterator: Iterable[T], start: int, end: int) -> None:
-        super().__init__(iterator)
-        self.start = start
-        self.end = end
-    
-    def __iter__(self):
-        return itertools.islice(self._iter, self.start, self.end)
-    
-class IterGroupby(Iter[T], Generic[T, R]):
-    def __init__(self, iterator: Iterable[T], key: Callable[[T], R]) -> None:
-        super().__init__(iterator)
-        self.key = key
-    
-    def __iter__(self):
-        return map(lambda pair: (pair[0], Iter[T](pair[1])), itertools.groupby(self._iter, self.key))
-
-class SList(list[T], Iter[T], Generic[T]):
-    """
-    Smart list, which can be used as an iterator.
-    """
-    def iter(self) -> Iter[T]:
-        return Iter(self)
-    def append(self, item: T) -> SList[T]:
-        super().append(item)
-        return self
-    
-class SDict(dict[K, V], Iter[K], Generic[K, V]):
-    """
-    Smart dict, which can be used as an iterator.
-    """
-    def iter(self) -> Iter[T]:
-        return Iter(super().keys())
-    def keys(self) -> Iter[K]:
-        return Iter(super().keys())
-    def values(self) -> Iter[V]:
-        return Iter(super().values())
-    def items(self) -> Iter[tuple[K, V]]:
-        return Iter(super().items())
-    
-
 class IterCollection(Iter[T], Generic[T]):
     _collection = None
 
@@ -172,3 +114,77 @@ class IterCollection(Iter[T], Generic[T]):
     
     def reversed(self) -> Iter[T]:
         return self.__reversed__()
+
+class SQueue(deque[T], IterCollection[T]):
+    def __init__(self, iterator: Optional[Iterable[T]] = None) -> None:
+        super().__init__(iterator)
+
+class IterMap(Iter[T], Generic[T, R]):
+
+    def __init__(self, iterator: Iterable[T], f: Callable[[T], R]) -> None:
+        super().__init__(iterator)
+        self.func = f
+    
+    def __iter__(self):
+        return map(self.func, self._iter)
+    
+class IterFilter(Iter[T], Generic[T]):
+    def __init__(self, iterator: Iterable[T], predicate: Callable[[T], bool]) -> None:
+        super().__init__(iterator)
+        self.func = predicate
+    
+    def __iter__(self):
+        return filter(self.func, self._iter)
+
+class IterSlice(Iter[T], Generic[T]):
+    def __init__(self, iterator: Iterable[T], start: int, end: int) -> None:
+        super().__init__(iterator)
+        self.start = start
+        self.end = end
+    
+    def __iter__(self):
+        return itertools.islice(self._iter, self.start, self.end)
+
+def consuming_groupby(iterable: Iter[T], key: Callable[[T], R]) -> Iter[tuple[R, SQueue[T]]]:
+    def append_or_create(r: SDict[R, SQueue[T]], k: R, item: T) -> SDict[R, SQueue[T]]:
+        if k not in r:
+            r[k] = SQueue([])
+        r[k].append(item)
+        return r
+    
+    return iterable \
+        .reduce((lambda state, x: append_or_create(state, key(x), x)), SDict()) \
+        .items() \
+        .map(lambda kv: [kv[0], kv[1]])
+
+class IterGroupby(Iter[T], Generic[T, R]):
+    def __init__(self, iterator: Iterable[T], key: Callable[[T], R]) -> None:
+        super().__init__(iterator)
+        self.key = key
+    
+    def __iter__(self):
+        return consuming_groupby(self._iter, self.key)
+        # return map(lambda pair: (pair[0], Iter[T](pair[1])), itertools.groupby(self._iter, self.key))
+
+class SList(list[T], IterCollection[T], Generic[T]):
+    """
+    Smart list, which can be used as an iterator.
+    """
+    def iter(self) -> Iter[T]:
+        return Iter(self)
+    def append(self, item: T) -> SList[T]:
+        super().append(item)
+        return self
+    
+class SDict(dict[K, V], IterCollection[K], Generic[K, V]):
+    """
+    Smart dict, which can be used as an iterator.
+    """
+    def iter(self) -> Iter[T]:
+        return Iter(iter(super().keys()))
+    def keys(self) -> Iter[K]:
+        return Iter(iter(super().keys()))
+    def values(self) -> Iter[V]:
+        return Iter(iter(super().values()))
+    def items(self) -> Iter[tuple[K, V]]:
+        return Iter(iter(super().items()))
