@@ -1,8 +1,11 @@
 from __future__ import annotations
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from typing import *
+import multiprocessing as mp
 from collections import deque
 import itertools
 import functools
+from typing import Callable, Iterable
 
 T = TypeVar('T')
 R = TypeVar('R')
@@ -61,21 +64,25 @@ class Iter(Iterable[T], Generic[T]):
     def enumerate(self, start: int = 0) -> Iter[tuple[int, T]]:
         return Iter(enumerate(self, start))
 
-    def group_by(self, key: Callable[[T], R]) -> Iter[tuple[R, Iter[T]]]:
+    def groupby(self, key: Callable[[T], R]) -> Iter[tuple[R, Iter[T]]]:
         """
         Groupby on keys
+
+        Note: Consumes entire iterator to create groups -> Holds dictionary of groups
         """
         return IterGroupby(self, key)
     
-    def agg_groupby(self, key: Callable[[T], R]):
+    def groupby_agg(self, key: Callable[[T], R]):
         """
         Groupby on consecutive keys
+
+        Note: Does not consume iterator
         """
         return Iter(itertools.groupby(self, key))
 
     def batch(self, n: int):
         return self.enumerate() \
-            .group_by(lambda x: x[0] // n) \
+            .groupby(lambda x: x[0] // n) \
             .map(lambda x: x[1].map(lambda y: y[1]))
     
     def concat(self, other: Iterable[T]) -> Iter[T]:
@@ -95,6 +102,12 @@ class Iter(Iterable[T], Generic[T]):
         return IterCollection(self.to_list())
     def collect(self, call: Callable[[Iterable], R]) -> R:
         return call(self)
+    
+    def thread_map(self, func: Callable[[T], R], threadpool_factory: Optional[Callable[[], ThreadPoolExecutor]] = None) -> Iter[R]:
+        """
+        WIP: map with automatic threading
+        """
+        return AsyncIter(self, func, threadpool_factory)
 
 class IterCollection(Iter[T], Generic[T]):
     _collection = None
@@ -172,7 +185,6 @@ class IterGroupby(Iter[T], Generic[T, R]):
     
     def __iter__(self):
         return consuming_groupby(self._iter, self.key)
-        # return map(lambda pair: (pair[0], Iter[T](pair[1])), itertools.groupby(self._iter, self.key))
 
 class SList(list[T], IterCollection[T], Generic[T]):
     """
@@ -196,3 +208,21 @@ class SDict(dict[K, V], IterCollection[K], Generic[K, V]):
         return Iter(iter(super().values()))
     def items(self) -> Iter[tuple[K, V]]:
         return Iter(iter(super().items()))
+
+class FuncWrapper(Callable[[T], R]):
+    def __init__(self, f: Callable[[T], R]):
+        self.f = f
+    def __call__(self, x: T) -> R:
+        return self.f(x)
+
+
+class AsyncIter(Iter[T]):
+    def __init__(self, iterator: Iterable[T], func:Callable[[T], R], threadpool_factory: Optional[Callable[[], ThreadPoolExecutor]] = None) -> None:
+        super().__init__(iterator)
+        self.func = func
+        self.factory = lambda: ThreadPoolExecutor()
+    
+    def __iter__(self) -> AsyncIter[R]:
+        with self.factory() as _pool:
+            _r = Iter(_pool.map(self.func, self._iter))
+        return Iter(_r)
