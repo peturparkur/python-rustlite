@@ -1,7 +1,6 @@
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from typing import *
-import multiprocessing as mp
 from collections import deque
 import itertools
 import functools
@@ -78,11 +77,11 @@ class Iter(Iterable[T], Generic[T]):
 
         Note: Does not consume iterator
         """
-        return Iter(itertools.groupby(self, key))
+        return Iter(itertools.groupby(self, key)).map(lambda pair: (pair[0], Iter(pair[1])))
 
     def batch(self, n: int):
         return self.enumerate() \
-            .groupby(lambda x: x[0] // n) \
+            .groupby_agg(lambda x: x[0] // n) \
             .map(lambda x: x[1].map(lambda y: y[1]))
     
     def concat(self, other: Iterable[T]) -> Iter[T]:
@@ -208,13 +207,6 @@ class SDict(dict[K, V], IterCollection[K], Generic[K, V]):
         return Iter(iter(super().values()))
     def items(self) -> Iter[tuple[K, V]]:
         return Iter(iter(super().items()))
-
-class FuncWrapper(Callable[[T], R]):
-    def __init__(self, f: Callable[[T], R]):
-        self.f = f
-    def __call__(self, x: T) -> R:
-        return self.f(x)
-
 
 class AsyncIter(Iter[T]):
     def __init__(self, iterator: Iterable[T], func:Callable[[T], R], threadpool_factory: Optional[Callable[[], ThreadPoolExecutor]] = None) -> None:
