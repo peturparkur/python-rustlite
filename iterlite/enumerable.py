@@ -1,6 +1,7 @@
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import multiprocessing as mp
+from multiprocessing import pool
 from typing import *
 from collections import deque
 import itertools
@@ -109,17 +110,14 @@ class Iter(Iterable[T], Generic[T]):
         """
         return AsyncIter(self, func, threadpool_factory)
     
-    def parallel(self, pool_factory: Optional[Callable[[], mp.Pool]] = None) -> ParIter[T]:
+    def parallel(self, pool_factory: Optional[Callable[[], pool.Pool]] = None) -> ParIter[T]:
         return ParIter(self, pool_factory)
     
-    def par_map(self, func:Callable[[T], R], pool_factory: Optional[Callable[[], mp.Pool]] = None) -> ParIter[R]:
+    def par_map(self, func:Callable[[T], R], pool_factory: Optional[Callable[[], pool.Pool]] = None) -> ParIter[R]:
         """
         WIP: map with automatic threading
         """
         return self.parallel(pool_factory).map(func)
-    
-
-
 
 class IterCollection(Iter[T], Generic[T]):
     _collection = None
@@ -233,7 +231,7 @@ class AsyncIter(Iter[T]):
         return _r
 
 class ParIter(Iter[T]):
-    def __init__(self, iterator: Iterable[T], factory: Optional[Callable[[], mp.Pool]] = None) -> None:
+    def __init__(self, iterator: Iterable[T], factory: Optional[Callable[[], pool.Pool]] = None) -> None:
         super().__init__(iterator)
         self.factory = factory if factory is not None else lambda: mp.Pool()
     
