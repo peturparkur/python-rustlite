@@ -1,5 +1,6 @@
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import multiprocessing as mp
 from typing import *
 from collections import deque
 import itertools
@@ -107,6 +108,18 @@ class Iter(Iterable[T], Generic[T]):
         WIP: map with automatic threading
         """
         return AsyncIter(self, func, threadpool_factory)
+    
+    def parallel(self, pool_factory: Optional[Callable[[], mp.Pool]] = None) -> ParIter[T]:
+        return ParIter(self, pool_factory)
+    
+    def par_map(self, func:Callable[[T], R], pool_factory: Optional[Callable[[], mp.Pool]] = None) -> ParIter[R]:
+        """
+        WIP: map with automatic threading
+        """
+        return self.parallel(pool_factory).map(func)
+    
+
+
 
 class IterCollection(Iter[T], Generic[T]):
     _collection = None
@@ -209,12 +222,22 @@ class SDict(dict[K, V], IterCollection[K], Generic[K, V]):
         return Iter(iter(super().items()))
 
 class AsyncIter(Iter[T]):
-    def __init__(self, iterator: Iterable[T], func:Callable[[T], R], threadpool_factory: Optional[Callable[[], ThreadPoolExecutor]] = None) -> None:
+    def __init__(self, iterator: Iterable[T], func:Callable[[T], R], factory: Optional[Callable[[], ThreadPoolExecutor]] = None) -> None:
         super().__init__(iterator)
         self.func = func
-        self.factory = lambda: ThreadPoolExecutor()
+        self.factory = factory if factory is not None else lambda: ThreadPoolExecutor()
     
     def __iter__(self) -> AsyncIter[R]:
         with self.factory() as _pool:
             _r = Iter(_pool.map(self.func, self._iter))
-        return Iter(_r)
+        return _r
+
+class ParIter(Iter[T]):
+    def __init__(self, iterator: Iterable[T], factory: Optional[Callable[[], mp.Pool]] = None) -> None:
+        super().__init__(iterator)
+        self.factory = factory if factory is not None else lambda: mp.Pool()
+    
+    def map(self, func: Callable[[T], R]) -> ParIter[R]:
+        with mp.Pool(4) as _pool:
+            _r = SList(_pool.map(func, self._iter))
+        return _r
